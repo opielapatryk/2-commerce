@@ -3,8 +3,9 @@ from django.db import IntegrityError
 from django.http import HttpResponse, HttpResponseRedirect
 from django.shortcuts import render
 from django.urls import reverse
+from .models import User, AuctionBids, AuctionListing,AuctionListingComments
+from django import forms
 
-from .models import User
 
 
 def index(request):
@@ -61,3 +62,31 @@ def register(request):
         return HttpResponseRedirect(reverse("index"))
     else:
         return render(request, "auctions/register.html")
+
+class CreateNewListingForm(forms.Form):
+    title = forms.CharField(max_length=64,widget=forms.TextInput(attrs={'placeholder': 'Title'}))
+    desc = forms.CharField(max_length=128,widget=forms.Textarea(attrs={'placeholder': 'Description'}))
+    starting_bid = forms.FloatField(widget=forms.TextInput(attrs={'placeholder': '99.99'}))
+    image_url = forms.CharField(max_length=64,empty_value=True,widget=forms.TextInput(attrs={'placeholder': 'path/img'}))
+    category = forms.CharField(max_length=64,widget=forms.TextInput(attrs={'placeholder': 'Category'}))
+
+def create(request):
+    if not request.user.is_authenticated:
+        return HttpResponseRedirect(reverse('login'))
+    else:
+        if request.method == 'POST':
+            form = CreateNewListingForm(request.POST)
+            if form.is_valid():
+                title = form.cleaned_data['title']
+                desc = form.cleaned_data['desc']
+                starting_bid = form.cleaned_data['starting_bid']
+                image_url = form.cleaned_data['image_url']
+                category = form.cleaned_data['category']
+                creator = request.user
+                auction = AuctionListing(title=title, description=desc, starting_bid=starting_bid, image_url=image_url, category=category, creator=creator)
+                auction.save()
+                return render(request, 'auctions/index.html')
+        else:
+            return render(request, "auctions/create.html",{
+                "form": CreateNewListingForm()
+            })
