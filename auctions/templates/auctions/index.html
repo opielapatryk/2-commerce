@@ -2,6 +2,11 @@
 
 {% block body %}
     <h2>Active Listings</h2>
-
+    {% for auction in auctions %}
+    <a href="{% url 'listing' auction.id %}">
+        {{auction}}
+    </a>    
+        <br>
+    {% endfor %}
     
 {% endblock %}

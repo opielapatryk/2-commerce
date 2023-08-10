@@ -25,3 +25,7 @@ class AuctionListingComments(models.Model):
     content = models.CharField(max_length=128)
     auction = models.ForeignKey(AuctionListing, on_delete=models.CASCADE)
     creator = models.ForeignKey(User, on_delete=models.CASCADE)
+
+class Watchlist(models.Model):
+    owner = models.ForeignKey(User, on_delete=models.CASCADE)
+    auction = models.ForeignKey(AuctionListing, on_delete=models.CASCADE)

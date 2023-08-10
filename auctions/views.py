@@ -3,14 +3,39 @@ from django.db import IntegrityError
 from django.http import HttpResponse, HttpResponseRedirect
 from django.shortcuts import render
 from django.urls import reverse
-from .models import User, AuctionBids, AuctionListing,AuctionListingComments
+from .models import User, AuctionBids, AuctionListing,AuctionListingComments,Watchlist
 from django import forms
 
 
 
 def index(request):
-    return render(request, "auctions/index.html")
+    return render(request, "auctions/index.html",{
+        'auctions': AuctionListing.objects.all(),
+    })
 
+def listing(request,listing_id):
+    
+    try:
+        submit = 'Delete From Watchlist'
+
+        watchlist_entry = Watchlist.objects.get(owner=request.user, auction=AuctionListing.objects.get(id=listing_id))
+        if request.method == 'POST':
+            watchlist_entry.delete()
+            submit = 'Add To Watchlist'
+
+            
+    except Watchlist.DoesNotExist:
+            submit = 'Add To Watchlist'
+            watchlist = Watchlist(owner=request.user,auction=AuctionListing.objects.get(id=listing_id))
+            if request.method == 'POST':
+                watchlist.save()
+                submit = 'Delete From Watchlist'
+
+                
+    return render(request, "auctions/listing.html",{
+        'auction': AuctionListing.objects.get(id=listing_id),
+        'submit':submit
+    })
 
 def login_view(request):
     if request.method == "POST":
