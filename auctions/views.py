@@ -13,8 +13,13 @@ def index(request):
         'auctions': AuctionListing.objects.all(),
     })
 
+class CreateBidForm(forms.Form):
+    new_bid = forms.FloatField(widget=forms.TextInput(attrs={'placeholder': '99.99',}))
+
 def listing(request,listing_id):
     try:
+        bid_message = ""
+
         watchlist_entry = Watchlist.objects.get(owner=request.user, auction=AuctionListing.objects.get(id=listing_id))
         submit = 'Delete From Watchlist'
         if 'watchlist' in request.POST:
@@ -22,7 +27,40 @@ def listing(request,listing_id):
             submit = 'Add To Watchlist'
             return HttpResponseRedirect(reverse("listing", args=[listing_id]))
         elif 'bid' in request.POST:
-            pass
+            bid_message = "bid"
+
+            form = CreateBidForm(request.POST)
+            if form.is_valid():
+                # define auction
+                auction_listing = AuctionListing.objects.get(id=listing_id)
+
+                # define new bid price
+                new_bid = form.cleaned_data['new_bid']
+
+                """ before save
+                    check if new bid is at least same as starting_bid
+                """
+
+                if new_bid >= auction_listing.starting_bid:
+                    # define auction bid
+                    auction_bid = AuctionBids(auction=auction_listing, price=new_bid, bidder=request.user)
+                    # save auction bid
+                    auction_bid.save()
+
+                    # set new auction price
+                    auction_listing.starting_bid = new_bid
+
+                    # save new auction price
+                    auction_listing.save()
+
+                    bid_message = 'Bid updated successfully!'
+                else:
+                    bid_message = 'This bid is too small..'
+                
+                
+
+                return HttpResponseRedirect(reverse("listing", args=[listing_id]))
+
     except Watchlist.DoesNotExist:
             submit = 'Add To Watchlist'
             watchlist = Watchlist(owner=request.user,auction=AuctionListing.objects.get(id=listing_id))
@@ -32,11 +70,42 @@ def listing(request,listing_id):
                 submit = 'Delete From Watchlist'
                 return HttpResponseRedirect(reverse("listing", args=[listing_id]))
             elif 'bid' in request.POST:
-                pass
+                bid_message = "bid"
+                form = CreateBidForm(request.POST)
+                if form.is_valid():
+                    # define auction
+                    auction_listing = AuctionListing.objects.get(id=listing_id)
+
+                    # define new bid price
+                    new_bid = form.cleaned_data['new_bid']
+
+                    """ before save
+                        check if new bid is at least same as starting_bid
+                    """
+
+                    if new_bid >= auction_listing.starting_bid:
+                        # define auction bid
+                        auction_bid = AuctionBids(auction=auction_listing, price=new_bid, bidder=request.user)
+                        # save auction bid
+                        auction_bid.save()
+                        # set new auction price
+                        auction_listing.starting_bid = new_bid
+
+                        # save new auction price
+                        auction_listing.save()                        
+                        bid_message = 'Bid updated successfully!'
+                    else:
+                        bid_message = 'This bid is too small..'
+                    
+
+
+                    return HttpResponseRedirect(reverse("listing", args=[listing_id]))
         
     return render(request, "auctions/listing.html",{
         'auction': AuctionListing.objects.get(id=listing_id),
-        'submit':submit
+        'submit':submit,
+        'form': CreateBidForm(),
+        'message': bid_message
     })
 
 

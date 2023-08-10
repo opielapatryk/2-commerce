@@ -9,10 +9,13 @@
     {% if user.is_authenticated %}
     <form action="{% url 'listing' auction.id%}" method="POST">
         {% csrf_token %}
-        <input type="number" name="" id="">
+        {{form}}
         <input type="submit" name="bid" value="Place Bid">
-        <input type="submit" name="watchlist" value="{{submit}}">
-
-    </form
+    </form>
+    <form action="{% url 'listing' auction.id %}" method="POST">
+        {% csrf_token %}
+        <button type="submit" name="watchlist">{{ submit }}</button>
+    </form>
+            {{message}}
     {% endif %}
 {% endblock %}
