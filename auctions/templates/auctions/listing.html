@@ -16,6 +16,8 @@
         {% csrf_token %}
         <button type="submit" name="watchlist">{{ submit }}</button>
     </form>
+        {% if message %}
             {{message}}
+        {% endif %}
     {% endif %}
 {% endblock %}

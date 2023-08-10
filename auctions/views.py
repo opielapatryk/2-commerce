@@ -18,7 +18,6 @@ class CreateBidForm(forms.Form):
 
 def listing(request,listing_id):
     try:
-        bid_message = ""
 
         watchlist_entry = Watchlist.objects.get(owner=request.user, auction=AuctionListing.objects.get(id=listing_id))
         submit = 'Delete From Watchlist'
@@ -27,7 +26,6 @@ def listing(request,listing_id):
             submit = 'Add To Watchlist'
             return HttpResponseRedirect(reverse("listing", args=[listing_id]))
         elif 'bid' in request.POST:
-            bid_message = "bid"
 
             form = CreateBidForm(request.POST)
             if form.is_valid():
@@ -53,9 +51,13 @@ def listing(request,listing_id):
                     # save new auction price
                     auction_listing.save()
 
-                    bid_message = 'Bid updated successfully!'
                 else:
-                    bid_message = 'This bid is too small..'
+                    return render(request, "auctions/listing.html",{
+        'auction': AuctionListing.objects.get(id=listing_id),
+        'submit':submit,
+        'form': CreateBidForm(),
+        'message': "Too small bid.."
+    })
                 
                 
 
@@ -70,7 +72,6 @@ def listing(request,listing_id):
                 submit = 'Delete From Watchlist'
                 return HttpResponseRedirect(reverse("listing", args=[listing_id]))
             elif 'bid' in request.POST:
-                bid_message = "bid"
                 form = CreateBidForm(request.POST)
                 if form.is_valid():
                     # define auction
@@ -92,10 +93,14 @@ def listing(request,listing_id):
                         auction_listing.starting_bid = new_bid
 
                         # save new auction price
-                        auction_listing.save()                        
-                        bid_message = 'Bid updated successfully!'
+                        auction_listing.save()             
                     else:
-                        bid_message = 'This bid is too small..'
+                        return render(request, "auctions/listing.html",{
+        'auction': AuctionListing.objects.get(id=listing_id),
+        'submit':submit,
+        'form': CreateBidForm(),
+        'message': "Too small bid.."
+    })
                     
 
 
@@ -105,7 +110,6 @@ def listing(request,listing_id):
         'auction': AuctionListing.objects.get(id=listing_id),
         'submit':submit,
         'form': CreateBidForm(),
-        'message': bid_message
     })
 
 
