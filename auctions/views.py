@@ -14,28 +14,31 @@ def index(request):
     })
 
 def listing(request,listing_id):
-    
     try:
-        submit = 'Delete From Watchlist'
-
         watchlist_entry = Watchlist.objects.get(owner=request.user, auction=AuctionListing.objects.get(id=listing_id))
-        if request.method == 'POST':
+        submit = 'Delete From Watchlist'
+        if 'watchlist' in request.POST:
             watchlist_entry.delete()
             submit = 'Add To Watchlist'
-
-            
+            return HttpResponseRedirect(reverse("listing", args=[listing_id]))
+        elif 'bid' in request.POST:
+            pass
     except Watchlist.DoesNotExist:
             submit = 'Add To Watchlist'
             watchlist = Watchlist(owner=request.user,auction=AuctionListing.objects.get(id=listing_id))
-            if request.method == 'POST':
+            submit = 'Add To Watchlist'
+            if 'watchlist' in request.POST:
                 watchlist.save()
                 submit = 'Delete From Watchlist'
-
-                
+                return HttpResponseRedirect(reverse("listing", args=[listing_id]))
+            elif 'bid' in request.POST:
+                pass
+        
     return render(request, "auctions/listing.html",{
         'auction': AuctionListing.objects.get(id=listing_id),
         'submit':submit
     })
+
 
 def login_view(request):
     if request.method == "POST":
