@@ -7,17 +7,42 @@
 </div>
     
     {% if user.is_authenticated %}
+    <!-- bid form -->
     <form action="{% url 'listing' auction.id%}" method="POST">
         {% csrf_token %}
         {{form}}
         <input type="submit" name="bid" value="Place Bid">
     </form>
+    <!-- watchlist form -->
     <form action="{% url 'listing' auction.id %}" method="POST">
         {% csrf_token %}
         <button type="submit" name="watchlist">{{ submit }}</button>
     </form>
-        {% if message %}
-            {{message}}
-        {% endif %}
+    {% if user == auction.creator %}
+    <!-- close auction form -->
+    <form action="{% url 'listing' auction.id %}" method="POST">
+        {% csrf_token %}
+        <button type="submit" name="close"> Close </button>
+    </form>
     {% endif %}
+    <!-- bid message -->
+    {% if message %}
+        {{message}}
+    {% endif %}
+    <!-- comment form -->
+    <form action="{% url 'listing' auction.id %}" method="post">
+        {% csrf_token %}
+        {{commentInput}}
+        <button type="submit" name="comment">Comment</button>
+    </form>
+    
+    {% endif %}
+    <!-- comments -->
+    <h3>Comments:</h3>
+    {% for comment in comments %}
+    
+        User: {{comment.creator}} <br>
+        {{comment.content}}
+        <br><br>
+    {% endfor %}
 {% endblock %}

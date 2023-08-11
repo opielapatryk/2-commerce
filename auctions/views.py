@@ -7,71 +7,52 @@ from .models import User, AuctionBids, AuctionListing,AuctionListingComments,Wat
 from django import forms
 
 
-
 def index(request):
+    active_auctions = AuctionListing.objects.filter(sold=False)
     return render(request, "auctions/index.html",{
-        'auctions': AuctionListing.objects.all(),
+        'auctions': active_auctions,
     })
 
 class CreateBidForm(forms.Form):
     new_bid = forms.FloatField(widget=forms.TextInput(attrs={'placeholder': '99.99',}))
 
+class CreateCommentForm(forms.Form):
+     new_comment = forms.CharField(max_length=256,widget=forms.TextInput(attrs={'placeholder': 'Comment'}))
+
 def listing(request,listing_id):
-    try:
+    if request.user.is_authenticated:
+        try:
 
-        watchlist_entry = Watchlist.objects.get(owner=request.user, auction=AuctionListing.objects.get(id=listing_id))
-        submit = 'Delete From Watchlist'
-        if 'watchlist' in request.POST:
-            watchlist_entry.delete()
-            submit = 'Add To Watchlist'
-            return HttpResponseRedirect(reverse("listing", args=[listing_id]))
-        elif 'bid' in request.POST:
-
-            form = CreateBidForm(request.POST)
-            if form.is_valid():
-                # define auction
-                auction_listing = AuctionListing.objects.get(id=listing_id)
-
-                # define new bid price
-                new_bid = form.cleaned_data['new_bid']
-
-                """ before save
-                    check if new bid is at least same as starting_bid
-                """
-
-                if new_bid >= auction_listing.starting_bid:
-                    # define auction bid
-                    auction_bid = AuctionBids(auction=auction_listing, price=new_bid, bidder=request.user)
-                    # save auction bid
-                    auction_bid.save()
-
-                    # set new auction price
-                    auction_listing.starting_bid = new_bid
-
-                    # save new auction price
-                    auction_listing.save()
-
-                else:
-                    return render(request, "auctions/listing.html",{
-        'auction': AuctionListing.objects.get(id=listing_id),
-        'submit':submit,
-        'form': CreateBidForm(),
-        'message': "Too small bid.."
-    })
-                
-                
-
-                return HttpResponseRedirect(reverse("listing", args=[listing_id]))
-
-    except Watchlist.DoesNotExist:
-            submit = 'Add To Watchlist'
-            watchlist = Watchlist(owner=request.user,auction=AuctionListing.objects.get(id=listing_id))
-            submit = 'Add To Watchlist'
+            watchlist_entry = Watchlist.objects.get(owner=request.user, auction=AuctionListing.objects.get(id=listing_id))
+            submit = 'Delete From Watchlist'
             if 'watchlist' in request.POST:
-                watchlist.save()
-                submit = 'Delete From Watchlist'
+                watchlist_entry.delete()
+                submit = 'Add To Watchlist'
                 return HttpResponseRedirect(reverse("listing", args=[listing_id]))
+            
+            elif 'close' in request.POST:
+                auction_listing = AuctionListing.objects.get(id=listing_id)
+                bids = AuctionBids.objects.filter(auction=auction_listing)
+                if bids.exists():
+                        last_bid = bids.last()
+                        last_bid.is_winner = True
+                        last_bid.save()
+
+                        auction_listing.sold = True
+                        auction_listing.save()
+                        
+                        if request.user == last_bid.bidder:
+                            message = 'You have won the auction'
+                            return render(request, "auctions/listing.html",{
+                                'auction': AuctionListing.objects.get(id=listing_id),
+                                'submit':submit,
+                                'form': CreateBidForm(),
+                                'commentInput': CreateCommentForm(),
+                                'message': message
+                            })
+
             elif 'bid' in request.POST:
+
                 form = CreateBidForm(request.POST)
                 if form.is_valid():
                     # define auction
@@ -89,27 +70,116 @@ def listing(request,listing_id):
                         auction_bid = AuctionBids(auction=auction_listing, price=new_bid, bidder=request.user)
                         # save auction bid
                         auction_bid.save()
+
                         # set new auction price
                         auction_listing.starting_bid = new_bid
 
                         # save new auction price
-                        auction_listing.save()             
+                        auction_listing.save()
+
                     else:
                         return render(request, "auctions/listing.html",{
-        'auction': AuctionListing.objects.get(id=listing_id),
-        'submit':submit,
-        'form': CreateBidForm(),
-        'message': "Too small bid.."
-    })
-                    
+                            'auction': AuctionListing.objects.get(id=listing_id),
+                            'submit':submit,
+                            'form': CreateBidForm(),
+                            'commentInput': CreateCommentForm(),
 
-
+                            'message': "Too small bid.."
+                        })
                     return HttpResponseRedirect(reverse("listing", args=[listing_id]))
-        
+            elif 'comment' in request.POST:
+                form = CreateCommentForm(request.POST)
+                if form.is_valid():
+                    auction_listing = AuctionListing.objects.get(id=listing_id)
+
+                    comment = AuctionListingComments(content=form.cleaned_data['new_comment'],auction=auction_listing,creator=request.user)
+                    comment.save()
+
+        except Watchlist.DoesNotExist:
+                submit = 'Add To Watchlist'
+                watchlist = Watchlist(owner=request.user,auction=AuctionListing.objects.get(id=listing_id))
+                submit = 'Add To Watchlist'
+                if 'watchlist' in request.POST:
+                    watchlist.save()
+                    submit = 'Delete From Watchlist'
+                    return HttpResponseRedirect(reverse("listing", args=[listing_id]))
+                elif 'close' in request.POST:
+                    auction_listing = AuctionListing.objects.get(id=listing_id)
+                    bids = AuctionBids.objects.filter(auction=auction_listing)
+                    if bids.exists():
+                        last_bid = bids.last()
+                        last_bid.is_winner = True
+                        last_bid.save()
+
+                        auction_listing.sold = True
+                        auction_listing.save()
+                        if request.user == last_bid.bidder:
+                                                    message = 'You have won the auction'
+                                                    return render(request, "auctions/listing.html",{
+                                    'auction': AuctionListing.objects.get(id=listing_id),
+                                    'submit':submit,
+                                    'form': CreateBidForm(),
+                                    'commentInput': CreateCommentForm(),
+
+                                    'message': message
+                                })
+
+                elif 'bid' in request.POST:
+                    form = CreateBidForm(request.POST)
+                    if form.is_valid():
+                        # define auction
+                        auction_listing = AuctionListing.objects.get(id=listing_id)
+
+                        # define new bid price
+                        new_bid = form.cleaned_data['new_bid']
+
+                        """ before save
+                            check if new bid is at least same as starting_bid
+                        """
+
+                        if new_bid >= auction_listing.starting_bid:
+                            # define auction bid
+                            auction_bid = AuctionBids(auction=auction_listing, price=new_bid, bidder=request.user)
+                            # save auction bid
+                            auction_bid.save()
+                            # set new auction price
+                            auction_listing.starting_bid = new_bid
+
+                            # save new auction price
+                            auction_listing.save()             
+                        else:
+                            return render(request, "auctions/listing.html",{
+                                
+                                'auction': AuctionListing.objects.get(id=listing_id),
+                                'submit':submit,
+                                'form': CreateBidForm(),
+                                'commentInput': CreateCommentForm(),
+
+                                'message': "Too small bid.."
+                            })
+                        
+
+
+                        return HttpResponseRedirect(reverse("listing", args=[listing_id]))
+                elif 'comment' in request.POST:
+                    form = CreateCommentForm(request.POST)
+                    if form.is_valid():
+                        auction_listing = AuctionListing.objects.get(id=listing_id)
+
+                        comment = AuctionListingComments(content=form.cleaned_data['new_comment'],auction=auction_listing,creator=request.user)
+                        comment.save()
+        auction_listing = AuctionListing.objects.get(id=listing_id)
+        return render(request, "auctions/listing.html",{
+            'auction': auction_listing,
+            'submit':submit,
+            'form': CreateBidForm(),
+            'commentInput': CreateCommentForm(),
+            'comments': AuctionListingComments.objects.filter(auction=auction_listing),
+        })
+    auction_listing = AuctionListing.objects.get(id=listing_id)
     return render(request, "auctions/listing.html",{
-        'auction': AuctionListing.objects.get(id=listing_id),
-        'submit':submit,
-        'form': CreateBidForm(),
+        'auction': auction_listing,
+        'comments': AuctionListingComments.objects.filter(auction=auction_listing),
     })
 
 
@@ -129,6 +199,7 @@ def login_view(request):
             return render(request, "auctions/login.html", {
                 "message": "Invalid username and/or password."
             })
+
     else:
         return render(request, "auctions/login.html")
 
@@ -191,3 +262,19 @@ def create(request):
             return render(request, "auctions/create.html",{
                 "form": CreateNewListingForm()
             })
+        
+def watchlist(request):
+     return render(request, "auctions/watchlist.html",{
+          "watchlist": Watchlist.objects.filter(owner=request.user)
+     })
+
+def categories(request):
+     return render(request, "auctions/categories.html",{
+          "auctions": AuctionListing.objects.all()
+     })
+
+def category(request,category):
+     return render(request, "auctions/category.html",{
+          #all auctions with category == category
+          'auctions': AuctionListing.objects.filter(category=category)
+     })

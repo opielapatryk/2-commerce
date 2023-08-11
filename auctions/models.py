@@ -12,6 +12,7 @@ class AuctionListing(models.Model):
     image_url = models.CharField(max_length=64,null=True)
     category = models.CharField(max_length=64,default="Toys")
     creator = models.ForeignKey(User,on_delete=models.CASCADE)
+    sold = models.BooleanField(default=False)
 
     def __str__(self):
         return f"Title: {self.title} Price: {self.starting_bid} Description: {self.description}"
@@ -20,6 +21,7 @@ class AuctionBids(models.Model):
     auction = models.ForeignKey(AuctionListing,on_delete=models.CASCADE)
     price = models.FloatField()
     bidder = models.ForeignKey(User,on_delete=models.CASCADE)
+    is_winner = models.BooleanField(default=False)
     
 class AuctionListingComments(models.Model):
     content = models.CharField(max_length=128)
